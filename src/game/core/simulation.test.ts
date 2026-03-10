@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initState } from "./state";
-import { applyAction, applyOfflineProgress } from "./simulation";
+import { applyAction, applyOfflineProgress, step } from "./simulation";
 
 describe("simulation actions", () => {
   it("supports drop, buy, boost, prestige loop", () => {
@@ -31,5 +31,26 @@ describe("simulation actions", () => {
     const result = applyOfflineProgress(state, 1000 * 60 * 60 * 24);
     expect(result.simulatedMs).toBeLessThan(1000 * 60 * 60 * 24);
     expect(state.coins).toBeGreaterThan(0);
+  });
+
+  it("does not lose coins in the bottom dead-zone", () => {
+    const state = initState();
+    state.coins = 10;
+    state.coinsOnBoard.push({
+      id: 1,
+      x: 200,
+      y: 550,
+      vx: 0,
+      vy: 0,
+      radius: 8,
+      life: 10
+    });
+
+    const before = state.coins;
+    // Zero dt isolates resolution logic and reproduces the former soft-lock bug.
+    step(state, 0);
+
+    expect(state.coins).toBeGreaterThan(before);
+    expect(state.coinsOnBoard).toHaveLength(0);
   });
 });

@@ -115,12 +115,12 @@ function stepBoard(state: GameState, dt: number): void {
 
     coin.life -= dt;
 
-    if (coin.x <= 20 || coin.x >= economyConfig.board.width - 20 || coin.y >= economyConfig.board.height - 4) {
+    if (coin.x <= 20 || coin.x >= economyConfig.board.width - 20 || coin.y >= economyConfig.board.height - 12) {
       resolveCoinFall(state, coin);
       continue;
     }
 
-    if (coin.y < economyConfig.board.height - 12 && coin.life > 0) {
+    if (coin.life > 0) {
       survivors.push(coin);
     }
   }
