@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sfxEngine } from "../audio/sfx";
+import { initState } from "../game/core/state";
 import { applyAction, step } from "../game/core/simulation";
 import type { Action, GameState, OfflineResult } from "../game/core/types";
-import { loadGame, saveGame } from "../persistence/storage";
+import { clearSave, loadGame, saveGame } from "../persistence/storage";
 
 const FIXED_DT = 1 / 30;
 const MAX_FRAME_TIME = 0.25;
@@ -12,6 +13,7 @@ export interface EngineState {
   state: GameState;
   offlineResult?: OfflineResult;
   dispatch: (action: Action) => void;
+  clearLocalSave: () => void;
 }
 
 export function useGameEngine(): EngineState {
@@ -109,5 +111,10 @@ export function useGameEngine(): EngineState {
     };
   }, [state]);
 
-  return { state, offlineResult, dispatch };
+  const clearLocalSave = useCallback(() => {
+    clearSave();
+    setState(initState());
+  }, []);
+
+  return { state, offlineResult, dispatch, clearLocalSave };
 }

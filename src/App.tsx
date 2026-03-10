@@ -6,7 +6,7 @@ import { OfflineSummary } from "./ui/OfflineSummary";
 import { UpgradeShop } from "./ui/UpgradeShop";
 
 export default function App(): JSX.Element {
-  const { state, offlineResult, dispatch } = useGameEngine();
+  const { state, offlineResult, dispatch, clearLocalSave } = useGameEngine();
 
   return (
     <main className="layout">
@@ -19,7 +19,7 @@ export default function App(): JSX.Element {
       </section>
 
       <section className="right-column">
-        <Controls state={state} dispatch={dispatch} />
+        <Controls state={state} dispatch={dispatch} onClearLocalSave={clearLocalSave} />
         <UpgradeShop state={state} dispatch={dispatch} />
       </section>
     </main>
