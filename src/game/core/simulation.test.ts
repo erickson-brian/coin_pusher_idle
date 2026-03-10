@@ -53,4 +53,34 @@ describe("simulation actions", () => {
     expect(state.coins).toBeGreaterThan(before);
     expect(state.coinsOnBoard).toHaveLength(0);
   });
+
+  it("stacks coins on the pusher bar surface", () => {
+    const state = initState();
+    state.coinsOnBoard.push(
+      {
+        id: 1,
+        x: 460,
+        y: 330,
+        vx: 0,
+        vy: 0,
+        radius: 8,
+        life: 10
+      },
+      {
+        id: 2,
+        x: 462,
+        y: 330,
+        vx: 0,
+        vy: 0,
+        radius: 8,
+        life: 10
+      }
+    );
+
+    step(state, 0);
+
+    expect(state.coinsOnBoard).toHaveLength(2);
+    const sorted = [...state.coinsOnBoard].sort((a, b) => b.y - a.y);
+    expect(sorted[0].y - sorted[1].y).toBeCloseTo(16, 3);
+  });
 });

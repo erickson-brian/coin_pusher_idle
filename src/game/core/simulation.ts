@@ -14,6 +14,25 @@ import type { Action, CoinEntity, GameState, OfflineResult } from "./types";
 import { initState } from "./state";
 
 const FX_LIFETIME = 0.75;
+const PUSHER_BASE_Y = 320;
+const PUSHER_WAVE_AMPLITUDE = 16;
+const LANE_MIN_X = 120;
+const LANE_MAX_X = economyConfig.board.width - 120;
+const LANE_COUNT = 40;
+const LANE_WIDTH = (LANE_MAX_X - LANE_MIN_X) / LANE_COUNT;
+
+function getPusherSurfaceY(phase: number): number {
+  return PUSHER_BASE_Y + Math.sin(phase) * (PUSHER_WAVE_AMPLITUDE * 0.15);
+}
+
+function laneFromX(x: number): number {
+  const lane = Math.floor((x - LANE_MIN_X) / LANE_WIDTH);
+  return Math.max(0, Math.min(LANE_COUNT - 1, lane));
+}
+
+function laneCenter(lane: number): number {
+  return LANE_MIN_X + lane * LANE_WIDTH + LANE_WIDTH * 0.5;
+}
 
 function randomFromCoin(coin: CoinEntity): number {
   const seed = Math.sin(coin.id * 12.9898 + coin.x * 78.233) * 43758.5453;
@@ -55,7 +74,7 @@ function addCoinToBoard(state: GameState): boolean {
 
   const coin: CoinEntity = {
     id: state.nextCoinId++,
-    x: economyConfig.board.width * (0.35 + (state.nextCoinId % 28) / 100),
+    x: economyConfig.board.width * (0.45 + (state.nextCoinId % 10) / 100),
     y: 64,
     vx: 0,
     vy: 0,
@@ -98,26 +117,40 @@ function runAutomation(state: GameState, dt: number): void {
 
 function stepBoard(state: GameState, dt: number): void {
   state.pusherPhase = (state.pusherPhase + dt * 1.5) % (Math.PI * 2);
-  const pusherWave = Math.sin(state.pusherPhase) * 16;
-  const pusherForce = 18 * getPusherForceMultiplier(state) * getBoostMultiplier(state);
+  const pusherDirection = Math.sin(state.pusherPhase) > 0 ? 1 : -1;
+  const pusherForce = 28 * getPusherForceMultiplier(state) * getBoostMultiplier(state);
+  const pusherSurfaceY = getPusherSurfaceY(state.pusherPhase);
+  const laneStackCounts = Array.from({ length: LANE_COUNT }, () => 0);
 
   const survivors: CoinEntity[] = [];
+  const sortedCoins = [...state.coinsOnBoard].sort((a, b) => b.y - a.y);
 
-  for (const coin of state.coinsOnBoard) {
-    coin.vx += ((pusherWave > 0 ? 1 : -1) * pusherForce * dt) / 4;
+  for (const coin of sortedCoins) {
     coin.vy += economyConfig.board.gravity * dt;
 
-    coin.vx *= economyConfig.board.friction;
+    coin.vx *= 0.994;
     coin.vy *= economyConfig.board.friction;
 
     coin.x += coin.vx * dt;
     coin.y += coin.vy * dt;
+    coin.x = Math.max(12, Math.min(economyConfig.board.width - 12, coin.x));
 
     coin.life -= dt;
 
     if (coin.x <= 20 || coin.x >= economyConfig.board.width - 20 || coin.y >= economyConfig.board.height - 12) {
       resolveCoinFall(state, coin);
       continue;
+    }
+
+    const lane = laneFromX(coin.x);
+    const supportY = pusherSurfaceY - coin.radius - laneStackCounts[lane] * (coin.radius * 2);
+    if (coin.y >= supportY && coin.vy >= 0) {
+      coin.y = supportY;
+      coin.vy = 0;
+      coin.vx += pusherDirection * pusherForce * dt;
+      const driftToCenter = (laneCenter(lane) - coin.x) * 0.03;
+      coin.vx += driftToCenter;
+      laneStackCounts[lane] += 1;
     }
 
     if (coin.life > 0) {
